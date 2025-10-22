@@ -1,0 +1,135 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+  initiatives   Initiative[]
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Initiative {
+  id            String   @id @default(cuid())
+  name          String
+  ownerEmail    String
+  summary       String
+  strategicObjective String
+  primaryKPI    String
+  currency      String   @default("USD")
+  region        String   @default("US")
+  horizonYears  Int      @default(3)
+  discountRate  Float    @default(0.10)
+  counterfactualType String // "do-nothing", "manual-improvement", "non-ai-software"
+  counterfactual Counterfactual?
+  costs         Cost[]   @relation("AICosts")
+  benefits      Benefit[] @relation("AIBenefits")
+  cfCosts       Cost[]   @relation("CFCosts")
+  cfBenefits    Benefit[] @relation("CFBenefits")
+  risks         Risk?
+  scenarios     Scenario[]
+  userId        String?
+  user          User?    @relation(fields: [userId], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Counterfactual {
+  id            String   @id @default(cuid())
+  initiativeId  String   @unique
+  description   String
+  initiative    Initiative @relation(fields: [initiativeId], references: [id], onDelete: Cascade)
+}
+
+model Cost {
+  id            String   @id @default(cuid())
+  initiativeId  String
+  label         String
+  category      String   // dev, data, license, cloud, training, change, governance, security, vendor, legal, maintenance
+  year          Int
+  amount        Float
+  isCounterfactual Boolean @default(false)
+  initiative    Initiative @relation("AICosts", fields: [initiativeId], references: [id], onDelete: Cascade)
+  cfInitiative  Initiative? @relation("CFCosts", fields: [initiativeId], references: [id], onDelete: Cascade)
+}
+
+model Benefit {
+  id            String   @id @default(cuid())
+  initiativeId  String
+  label         String
+  category      String   // productivity, revenue, quality, speed, risk, cx
+  year          Int
+  amount        Float
+  isCounterfactual Boolean @default(false)
+  initiative    Initiative @relation("AIBenefits", fields: [initiativeId], references: [id], onDelete: Cascade)
+  cfInitiative  Initiative? @relation("CFBenefits", fields: [initiativeId], references: [id], onDelete: Cascade)
+}
+
+model Risk {
+  id            String   @id @default(cuid())
+  initiativeId  String   @unique
+  pSuccess      Float    // 0..1
+  pAdoption     Float    // 0..1
+  dataRisk      Int      // 1..5
+  regulatoryRisk Int     // 1..5
+  vendorRisk    Int      // 1..5
+  multipliers   String   // JSON string for m_j
+  initiative    Initiative @relation(fields: [initiativeId], references: [id], onDelete: Cascade)
+}
+
+model Scenario {
+  id            String   @id @default(cuid())
+  initiativeId  String
+  name          String   // Conservative, Base, Aggressive, Custom
+  inputs        String   // JSON string for overrides
+  results       String?  // JSON string for cached outputs
+  createdAt     DateTime @default(now())
+  initiative    Initiative @relation(fields: [initiativeId], references: [id], onDelete: Cascade)
+}
