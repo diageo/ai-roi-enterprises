@@ -309,7 +309,7 @@ function testVariableSensitivity(
 ): { elasticity: number; impact: number } {
   const testMultiplier = 1.1; // 10% increase
   const modifiedData = modifyData(data, testMultiplier);
-  const modifiedRisk = testMultiplier !== 1.0 ? 
+  const modifiedRisk = testMultiplier > 1.0 ? 
     { ...riskData, pSuccess: Math.max(0, Math.min(1, riskData.pSuccess * testMultiplier)) } : 
     riskData;
   
